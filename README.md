@@ -1,4 +1,4 @@
-# MiSPU [![License](http://img.shields.io/badge/license-GPL%20%28%3E=%202%29-brightgreen.svg?style=flat)](http://www.gnu.org/licenses/gpl-2.0.html) [![CRAN](http://www.r-pkg.org/badges/version/MiSPU)](http://cran.rstudio.com/package=MiSPU) 
+# aispu [![License](http://img.shields.io/badge/license-GPL%20%28%3E=%202%29-brightgreen.svg?style=flat)](http://www.gnu.org/licenses/gpl-2.0.html) [![CRAN](http://www.r-pkg.org/badges/version/MiSPU)](http://cran.rstudio.com/package=MiSPU) 
 
 This package implements a new test called adaptive interaction sum of powered score (aiSPU) test for testing high-dimensional parameters under generalized linear models (GLMs) with high-dimensional nuisance parameters. Some related methods have been implemented as well. *The package will be available on CRAN later.* 
 
@@ -25,11 +25,30 @@ In this package, we implement the adaptive interaction sum of powered score (aiS
 ```r
 library(aispu)
 
-# Generate the data (codes for the simulations in the manuscript)n = 30signal.r = 0nInformative = 3p = 40seed = 1s = 0.01non.zero = floor((p/2) * s)alpha = c(rep(0,p/2 - non.zero), runif(non.zero,-signal.r,signal.r))beta = c(rep(2,nInformative), rep(0,(p/2- 3)), alpha)
+# Generate the data (codes for the simulations in the manuscript)
+n = 30
+signal.r = 0
+nInformative = 3
+p = 40
+seed = 1
+s = 0.01
+non.zero = floor((p/2) * s)
+alpha = c(rep(0,p/2 - non.zero), runif(non.zero,-signal.r,signal.r))
+beta = c(rep(2,nInformative), rep(0,(p/2- 3)), alpha)
 
-dat = sim_data(seed, n = n, p = p, beta = beta)X = dat$XY = dat$Ycov = NULLX.tmp = Xcov2 = X.tmp[,1:(p/2)]X = X.tmp[,(p/2 + 1):p]# run the test, bootstrap-based methodaispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= "gaussian",penalty = "tlp", n.perm = 1000,resample = "boot")
+dat = sim_data(seed, n = n, p = p, beta = beta)
+X = dat$X
+Y = dat$Y
+cov = NULL
+X.tmp = X
+cov2 = X.tmp[,1:(p/2)]
+X = X.tmp[,(p/2 + 1):p]
 
-# run the test, asymptotics-based methodaispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= "gaussian",penalty = "tlp", n.perm = 1000,resample = "asy")
+# run the test, bootstrap-based method
+aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= "gaussian",penalty = "tlp", n.perm = 1000,resample = "boot")
+
+# run the test, asymptotics-based method
+aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= "gaussian",penalty = "tlp", n.perm = 1000,resample = "asy")
 
 ```
 
