@@ -7,7 +7,7 @@
 aispu(Y, X, cov = NULL, cov2, pow = c(1:6, Inf), model = c("gaussian",
   "binomial"), n.perm = 1000, penalty = c("tlp", "lasso", "ridge", "net",
   "mcp", "SCAD"), tau = 0.1, standardize = FALSE, dfmax = 1000,
-  pmax = 1000, resample = c("asy", "boot"))
+  pmax = 1000, resample = c("asy", "asy-boot", "boot"),bandwidth = 3)
 }
 \arguments{
 \item{Y}{Response or phenotype data. It can be either a binary trait or a quantitative trait. A vector with length n (number of subjects).}
@@ -35,8 +35,12 @@ for predictor).A matrix with dimension n by p.}
 
 \item{pmax}{Limit the maximum number of variables ever to be nonzero.}
 
-\item{resample}{Methods for calculating p-values. The default is the asymptotics-based method ("asy").}
+\item{resample}{Methods for calculating p-values. The default is the fully asymptotics-based method ("asy"). `asy-boot' stands for asymptotics-based method but using parametric bootstrap to calculate the mean and variance of the test statistics. `boot' stands for the fully bootstrap-based method.}
+
+\item{bandwidth}{Optimal bandwidth for `asy' method.}
+
 }
+
 \value{
 A list object, Ts : test statistics for the iSPU tests (in the order of the specified pow) and finally for the aSPU test.
         pvs : p-values for the iSPU and aiSPU tests.
@@ -65,10 +69,17 @@ cov = NULL
 X.tmp = X
 cov2 = X.tmp[,1:(p/2)]
 X = X.tmp[,(p/2 + 1):p]
-aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= "gaussian",penalty = "tlp", n.perm = 10,resample = "boot")
+aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), 
+model= "gaussian",penalty = "tlp", n.perm = 10,resample = "boot")
+
+#aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), 
+#model= "gaussian",penalty = "tlp", n.perm = 10,resample = "asy")
+
+#aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), 
+#model= "gaussian",penalty = "tlp", n.perm = 10,resample = "asy-boot")
 }
 \references{
-Wu, C., Xu, G., Shen, X., & Pan, W. (2018+). An adaptive test for high-dimensional generalized linear models with application to detect gene-environment interactions, Submitted.
+Wu, C., Xu, G., Shen, X., & Pan, W. (2020+). A Regularization-Based Adaptive Test for High-Dimensional Generalized Linear Models, Submitted.
 }
 \author{
 Chong Wu and Wei Pan

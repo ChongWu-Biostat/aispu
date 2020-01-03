@@ -16,7 +16,7 @@ This package provides a new test called the adaptive interaction sum of powered 
 Maintainer: \packageMaintainer{aispu}
 }
 \references{
-Wu, C., Xu, G., Shen, X., & Pan, W. (2018+). An adaptive test for high-dimensional generalized linear models with application to detect gene-environment interactions, Submitted.
+Wu, C., Xu, G., Shen, X., & Pan, W. (2020+). A Regularization-Based Adaptive Test for High-Dimensional Generalized Linear Models, Submitted.
 
 Zhang, X., & Cheng, G. (2017). Simultaneous inference for high-dimensional linear models. Journal of the American Statistical Association, 112(518), 757-768.
 }

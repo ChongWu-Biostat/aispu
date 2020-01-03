@@ -35,7 +35,7 @@
 #' @author Chong Wu and Wei Pan
 #'
 #' @references
-#' Wu, C., Xu, G., Shen, X., & Pan, W. (2018+). An adaptive test for high-dimensional generalized linear models with application to detect gene-environment interactions, Submitted.
+#' Wu, C., Xu, G., Shen, X., & Pan, W. (2018+). A Regularization-Based Adaptive Test for High-Dimensional Generalized Linear Models, Submitted.
 #'
 #' @examples
 #'
@@ -60,17 +60,23 @@
 #' X = X.tmp[,(p/2 + 1):p]
 #' aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= "gaussian",penalty = "tlp", n.perm = 10,resample = "boot")
 #' aispu(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= "gaussian",penalty = "tlp", n.perm = 10,resample = "asy")
-
-
-aispu <- function(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= c("gaussian", "binomial"),n.perm = 1000, penalty = c("tlp","lasso","ridge","net","mcp","SCAD"), tau = 0.1, standardize = FALSE, dfmax = 1000, pmax = 1000, resample = c("asy","boot")) {
+aispu <- function(Y, X,cov = NULL, cov2, pow = c(1:6, Inf), model= c("gaussian", "binomial"),n.perm = 1000, penalty = c("tlp","lasso","ridge","net","mcp","SCAD"), tau = 0.1, standardize = FALSE, dfmax = 1000, pmax = 1000, resample = c("asy","asy-boot","boot"),bandwidth = 3) {
     
     X <- as.matrix(X)
     model <- match.arg(model)
     resample <- match.arg(resample)
     
     if(resample == "boot") {
-        aispu_boot(Y = Y, X = X, cov = cov, SNP = cov2, pow = pow,model = model, n.perm = n.perm, penalty = penalty, tau = tau, standardize = standardize, dfmax = dfmax, pmax = pmax)
+        res = aispu_boot(Y = Y, X = X, cov = cov, SNP = cov2, pow = pow,model = model, n.perm = n.perm, penalty = penalty, tau = tau, standardize = standardize, dfmax = dfmax, pmax = pmax)
+        return(res)
+    } else if(resample == "asy-boot"){
+        res = aispu_asy(Y = Y, X = X, cov = cov, SNP = cov2, pow = pow,model = model, n.perm = n.perm, penalty = penalty, tau = tau, standardize = standardize, dfmax = dfmax, pmax = pmax)
+        return(res)
+        
     } else {
-        aispu_asy(Y = Y, X = X, cov = cov, SNP = cov2, pow = pow,model = model, n.perm = n.perm, penalty = penalty, tau = tau, standardize = standardize, dfmax = dfmax, pmax = pmax)
+        res = apvalband_aSPU(Y = Y, X = X, cov = cov, SNP = cov2, pow = pow,bandwidth = bandwidth, model = model,  penalty = penalty, tau = tau, standardize = standardize, dfmax = dfmax, pmax = pmax)
+        return(res)
+        
     }
 }
+

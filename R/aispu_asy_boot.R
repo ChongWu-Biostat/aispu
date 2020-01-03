@@ -1,8 +1,12 @@
-aispu_boot <- function(Y, X, cov=NULL, SNP, pow=c(1:6, Inf), model=c("gaussian", "binomial"), n.perm=1000, penalty = c("tlp","lasso","ridge","net","mcp","SCAD"),  tau = 0.1, standardize = FALSE, dfmax = 1000, pmax = 1000){
+#require(mvtnorm)
+
+aispu_asy <- function(Y, X,cov = NULL, SNP, pow = c(1:6, Inf), model= c("gaussian", "binomial"),n.perm = 1000, penalty = c("tlp","lasso","ridge","net","mcp","SCAD"), tau = 0.1, standardize = FALSE, dfmax = 1000, pmax = 1000){
     
     model = match.arg(model)
     
-    n <- length(Y)
+    n <- dim(X)[1]
+    p <- dim(X)[2]
+    
     if (is.null(X) && length(X)>0) X=as.matrix(X, ncol=1)
     k <- ncol(X)
     
@@ -14,14 +18,12 @@ aispu_boot <- function(Y, X, cov=NULL, SNP, pow=c(1:6, Inf), model=c("gaussian",
         cov = cbind(cov, SNP)
     }
     
-    if (is.null(cov)){
-        ## NO nuisance parameters:
-        Xg <- XUs <- X
-        U <- t(Xg) %*% (Y-mean(Y))
-        yresids <- Y-mean(Y)
-        yfits <- rep(mean(Y), n)
+    if(is.null(cov)) {
+        r <- Y - mean(Y)
+        U <- t(X) %*% r
+        U <- U / n
+        X.new = sweep(X,MARGIN=1,r,`*`)
     } else {
-        ## with nuisance parameters:
         if(penalty =="tlp") {
             tau1 = tau[1]
             cv = cv.glmTLP(cov,Y,family = model, tau = tau1, penalty.factor = penalty.factor,  standardize = standardize, dfmax = dfmax,pmax = pmax)
@@ -31,7 +33,7 @@ aispu_boot <- function(Y, X, cov=NULL, SNP, pow=c(1:6, Inf), model=c("gaussian",
             if(length(tau) > 1) {
                 for(i in 2:length(tau)) {
                     tau1 = tau[i]
-                    cv.tmp = cv.glmTLP(cov,Y,family = model, tau = tau1, lambda = lambda, penalty.factor = penalty.factor, standardize = standardize, dfmax = dfmax,pmax = pmax)
+                    cv.tmp = cv.glmTLP(cov,Y,family = model, tau = tau1, penalty.factor = penalty.factor, standardize = standardize, dfmax = dfmax,pmax = pmax)
                     cv.tmp = cbind(cv.tmp$cvm,cv.tmp$lambda, cv.tmp$tau)
                     colnames(cv.tmp) = c("cv","lambda","tau")
                     cv = rbind(cv,cv.tmp)
@@ -51,9 +53,6 @@ aispu_boot <- function(Y, X, cov=NULL, SNP, pow=c(1:6, Inf), model=c("gaussian",
             
             fit1 = glmTLP(cov,Y,family = model,lambda = lambda.tmp, penalty.factor = penalty.factor,  tau = tau.tmp, standardize = standardize, dfmax = dfmax,pmax = pmax)
             
-            
-            coef.save <- c(fit1$a0,as.matrix(fit1$beta))
-
             yfits <- predict(fit1,cov,type = "response")
             yresids <- Y - yfits
             
@@ -62,75 +61,57 @@ aispu_boot <- function(Y, X, cov=NULL, SNP, pow=c(1:6, Inf), model=c("gaussian",
             lambda.tmp = cvfit$lambda.min
             yfits <- predict(cvfit, newx = cov, s = "lambda.min",type = "response")
             yresids <- Y - yfits
-            
-            coef.tmp <- predict(cvfit,s = "lambda.min",type = "coefficients")
-            coef.save <- as.matrix(coef.tmp)
-            
         } else if (penalty == "ridge") {
             cvfit <- cv.glmnet(cov, Y,family = model, penalty.factor = penalty.factor,  standardize = standardize, dfmax = dfmax,pmax = pmax,alpha = 0)
             lambda.tmp = cvfit$lambda.min
             yfits <- predict(cvfit, newx = cov, s = "lambda.min",type = "response")
             yresids <- Y - yfits
-            
-            coef.tmp <- predict(cvfit,s = "lambda.min",type = "coefficients")
-            coef.save <- as.matrix(coef.tmp)
-            
         } else if (penalty == "net") {
             cvfit <- cv.glmnet(cov, Y,family = model,penalty.factor = penalty.factor,  standardize = standardize, dfmax = dfmax,pmax = pmax,alpha = 0.5)
             lambda.tmp = cvfit$lambda.min
             yfits <- predict(cvfit, newx = cov, s = "lambda.min",type = "response")
             yresids <- Y - yfits
-            
-            coef.tmp <- predict(cvfit,s = "lambda.min",type = "coefficients")
-            coef.save <- as.matrix(coef.tmp)
-            
         } else if (penalty == "mcp") {
             cvfit = cv.ncvreg(cov, Y, family=model,penalty.factor = penalty.factor,  penalty="MCP")
             lambda.tmp =cvfit$lambda.min
             fit = ncvreg(cov,Y, family = model,penalty.factor = penalty.factor,  penalty = "MCP",lambda = lambda.tmp)
             yfits = predict(fit,cov,type = "response")
             yresids <- Y - yfits
-            
-            coef.save <- as.matrix(fit$beta)
-
         } else if (penalty == "scad") {
             cvfit = cv.ncvreg(cov, Y, family=model,penalty.factor = penalty.factor, penalty="SCAD")
             lambda.tmp =cvfit$lambda.min
             fit = ncvreg(cov,Y, family = model,penalty.factor = penalty.factor, penalty = "SCAD",lambda = lambda.tmp)
             yfits = predict(fit,cov,type = "response")
             yresids <- Y - yfits
-            
-            coef.save <- as.matrix(fit$beta)
         }
         
-        Us <- XUs <- X
-        U <- t(XUs) %*% (Y - yfits)
+        X.new <- sweep(X,MARGIN=1,yresids,`*`)
+        U <- t(X) %*% yresids
+        U <- U / n
         
+        sam.cov = cov(X.new)
+        
+        diag.sam.cov <- diag(sam.cov)
+        diag.sam.cov[diag.sam.cov <= 10^(-10)] <- 10^(-10)
+        
+        # test stat's:
+        Ts <- max(U^2/diag.sam.cov)
     }
     
-    X.new = sweep(X,MARGIN=1,yresids,`*`)
-    sam.cov = cov(X.new)
+    ## calculate the expecatation, variance, and covariance of L(gamma)
+    parametric.boot <- matrix(NA, n.perm, dim(U)[1])
+    T0s = matrix(0, nrow=n.perm, ncol=1)
     
-    diag.sam.cov <- diag(sam.cov)
-    diag.sam.cov[diag.sam.cov <= 10^(-10)] <- 10^(-10)
-
-
-    # test stat's:
-    Ts <- rep(0, length(pow))
-    for(j in 1:length(pow)){
-        if (pow[j] < Inf)
-        Ts[j] = sum(U^pow[j]) else Ts[j] = max(U^2/diag.sam.cov)
-    }
-    
-    # bootstrap:
-    T0s = matrix(0, nrow=n.perm, ncol=length(pow))
     Y0 = Y
-    for(b in 1:n.perm){
+    
+    for (b in 1:n.perm){
+        set.seed(b)
         if (is.null(cov)) {
             Y0 <- sample(Y, length(Y))
-            #########Null score vector:
-            U0 <- t(Xg) %*% (Y0-mean(Y0))
+            ##  Null score vector:
+            parametric.boot[b,]<- t(X) %*% (Y0-mean(Y0))
         } else {
+            
             ## with nuisance parameters:
             if ( model == "gaussian") {
                 Y0 <- yfits + sample(yresids, n, replace = F )
@@ -157,36 +138,90 @@ aispu_boot <- function(Y, X, cov=NULL, SNP, pow=c(1:6, Inf), model=c("gaussian",
                 fit = ncvreg(cov,Y0, family = model,penalty.factor = penalty.factor, penalty = "SCAD",lambda = lambda.tmp)
                 yfits0 = predict(fit,cov,type = "response")
             }
-            U0<-t(XUs) %*% (Y0 - yfits0)
+            U0<-t(X) %*% (Y0 - yfits0)
+            U0 <- U0/n
+            T0s[b, 1] = max(U0^2/diag.sam.cov)
+            
+            parametric.boot[b,]<- U0
+            
         }
-        
-        # test stat's:
-        for(j in 1:length(pow))
-        if (pow[j] < Inf)
-        T0s[b, j] = sum(U0^pow[j]) else T0s[b, j] = max(U0^2/diag.sam.cov)
-        
     }
     
-    # bootstrap-based p-values:
-    #pPerm0 <- apply( matrix( rep(abs(Ts),n.perm), nrow = n.perm, byrow = T) < abs(T0s), 2, mean)
-    
-    pPerm0 = rep(NA,length(pow))
-    for ( j in 1:length(pow))
-    {
-        pPerm0[j] = round( sum(abs(Ts[j])<=abs(T0s[,j])) / n.perm, digits = 8)
-        P0s = ( ( n.perm - rank( abs(T0s[,j]) ) ) + 1 ) / (n.perm)
-        if (j == 1 ) minp0  = P0s else minp0[which(minp0>P0s)] = P0s[which(minp0>P0s)]
+    ##observed statistics
+    pval <- numeric(length(pow) + 1)
+    L <- numeric(length(pow))
+    if(sum(pow==Inf)==0) {
+        L.e <- numeric(length(pow))
+        L.var <- numeric(length(pow))
+        
+        stan.L <- numeric(length(pow))
+        
+        boot.test.stat <- matrix(NA,n.perm,length(pow))
+        
+        for (b in 1:length(pow)) {
+            boot.test.stat[,b] <-rowSums(parametric.boot^{pow[b]})
+        }
+    } else {
+        L.e <- numeric(length(pow) - 1)
+        L.var <- numeric(length(pow) - 1)
+        
+        stan.L <- numeric(length(pow) - 1)
+        
+        boot.test.stat <- matrix(NA,n.perm,length(pow)-1)
+        
+        for (b in 1:(length(pow)-1)) {
+            boot.test.stat[,b] <-rowSums(parametric.boot^{pow[b]})
+        }
     }
     
-    Paspu <- (sum(minp0 <= min(pPerm0)) + 1) / (n.perm+1)
-    pvs <- c(pPerm0, Paspu)
+    L.e <- colMeans(boot.test.stat)
+    boot.var <- var(boot.test.stat)
     
-    Ts <- c(Ts, min(pPerm0))
-    names(Ts) <- c(paste("iSPU(", pow,")", sep=""), "aiSPU")
-    names(pvs) = names(Ts)
+    L.var <- diag(boot.var)
+    boot.cor <- cor(boot.test.stat)
     
-    list(Ts = Ts, pvs = pvs,coef = coef.save)
+    ########################################
+    
+    for(i in 1:length(pow)){
+        if(pow[i] != Inf){
+            L[i] <- sum(U^(pow[i]))
+            stan.L[i] <- (L[i] - L.e[i]) / sqrt(L.var[i])
+            if(pow[i] %% 2 == 1) pval[i] <- 2 * (1 - pnorm(abs(stan.L[i])))
+            if(pow[i] %% 2 == 0) pval[i] <- 1 - pnorm(stan.L[i])
+        } else {
+            pval.inf <- round(sum(abs(Ts)<=abs(T0s)) / n.perm, digits = 8)
+            pval[i] <- pval.inf
+        }
+    }
+    
+    f.pow <- pow[pow != Inf]
+    odd.ga <- f.pow[f.pow %% 2 == 1]
+    odd.ga.id <- which(f.pow %% 2 == 1)
+    even.ga <- f.pow[f.pow %% 2 == 0]
+    even.ga.id <- which(f.pow %% 2 == 0)
+    n.odd.ga <- length(odd.ga)
+    n.even.ga <- length(even.ga)
+    R_O <- matrix(NA, n.odd.ga, n.odd.ga)
+    R_E <- matrix(NA, n.even.ga, n.even.ga)
+    
+    R_O <- boot.cor[odd.ga.id,odd.ga.id]
+    R_E <- boot.cor[even.ga.id,even.ga.id]
+    
+    TO <- max(abs(stan.L[odd.ga.id]))
+    TE <- max(stan.L[even.ga.id])
+    pval_O <- 1 - pmvnorm(lower = -rep(TO, n.odd.ga), upper = rep(TO, n.odd.ga), mean = rep(0, n.odd.ga), sigma = R_O)
+    pval_E <- 1 - pmvnorm(lower = rep(-Inf, n.even.ga), upper = rep(TE, n.even.ga), mean = rep(0, n.even.ga), sigma = R_E)
+    
+    if(sum(pow==Inf)==0) {
+        pval.min <- min(c(pval_O, pval_E))
+        pval[length(pow) + 1] <- 1 - (1 - pval.min)^2
+        names(pval) <- c(paste("iSPU(", pow,")", sep = ""), "aiSPU")
+    } else {
+        
+        pval.min <- min(c(pval_O, pval_E, pval.inf))
+        pval[length(pow) + 1] <- 1 - (1 - pval.min)^3
+        names(pval) <- c(paste("iSPU(", pow, ")", sep = ""), "aiSPU")
+    }
+    out = list(pvs = pval, Ts = L)
+    return(out)
 }
-
-
-

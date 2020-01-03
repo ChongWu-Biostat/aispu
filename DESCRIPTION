@@ -1,10 +1,10 @@
 Package: aispu
 Type: Package
 Title: Adaptive Interaction Sum of Powered Score Tests
-Version: 1.0
-Date: 2018-07-02
+Version: 1.1
+Date: 2020-01-02
 Author: Chong Wu and Wei Pan
-Maintainer: Chong Wu <wuxx0845@umn.edu>
+Maintainer: Chong Wu <cwu3@fsu.edu>
 Description: Testing high-dimensional parameters under generalized linear models (GLMs) with high-dimensional nuisance parameters is largely untouched. Most existing tests are powerful only against certain alternatives and may yield incorrect Type 1 error rates under high-dimensional nuisance parameters situations. This package provides a new test called the adaptive interaction sum of powered score (aiSPU) test based on the truncated Lasso penalty and an adaptive testing idea, which can maintain high statistical power and correct Type I error rates across a wide range of alternatives. Some related methods have been implemented in this package as well.
 License: GPL-2
 Depends: R (>= 3.1.1)
